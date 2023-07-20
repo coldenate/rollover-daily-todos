@@ -6,7 +6,7 @@ Rollover Daily Todos</h1>
 
 <br/>
 
-<img align="center" src="https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/.github/video.gif" alt="Rollover Logo" width="400" height="200"><br/>
+<img align="center" src="https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/.github/video.gif" alt="Rollover Logo" width="400" height="400"><br/>
 
 ## Usage
 
