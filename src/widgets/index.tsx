@@ -116,22 +116,26 @@ async function onActivate(plugin: ReactRNPlugin) {
 		},
 	});
 
-	// await plugin.app.registerCommand({
-	// 	id: 'debug-auto-rollover',
-	// 	name: 'Debug Auto Rollover',
-	// 	description: 'Set the last rollover time to seven days ago',
-	// 	quickCode: 'debug',
-	// 	icon: '🐛',
-	// 	keywords: 'debug, auto, rollover',
-	// 	keyboardShortcut: 'ctrl+shift+alt+d',
-	// 	action: async () => {
-	// 		await plugin.storage.setSynced(
-	// 			'lastRollover',
-	// 			new Date(new Date().setDate(new Date().getDate() - 7))
-	// 		);
-	// 		await autoRollover(plugin);
-	// 	},
-	// });
+	await plugin.app.registerCommand({
+		id: 'debug-auto-rollover',
+		name: 'Debug Auto Rollover',
+		description: 'Set the last rollover time to seven days ago',
+		quickCode: 'debug',
+		icon: '🐛',
+		keywords: 'debug, auto, rollover',
+		keyboardShortcut: 'ctrl+shift+alt+d',
+		action: async () => {
+			await plugin.storage.setSynced(
+				'lastRollover',
+				new Date(new Date().setDate(new Date().getDate() - 7))
+			);
+			await plugin.storage.setSynced(
+				'mostRecentAutoRollover',
+				new Date(new Date().setDate(new Date().getDate() - 7))
+			);
+			await autoRollover(plugin);
+		},
+	});
 
 	// settings
 
@@ -159,23 +163,35 @@ async function onActivate(plugin: ReactRNPlugin) {
 	// jobs
 	await autoRollover(plugin);
 }
-
 async function autoRollover(plugin: ReactRNPlugin) {
 	const lastRolloverTime: Date | undefined = await plugin.storage.getSynced('lastRollover');
-	const autoRolloverTime: string | undefined = await plugin.settings.getSetting('autoRollover');
+	const autoRolloverTime: string | undefined = await plugin.settings.getSetting('autoRollover'); // hh:mm
+	const lastRolloverDate: Date | undefined = lastRolloverTime
+		? new Date(lastRolloverTime)
+		: undefined;
 	// take hh:mm and convert that to a Date object for today
-	const autoRolloverDate: Date | undefined = new Date(
-		new Date().toLocaleDateString('en-US') + ' ' + autoRolloverTime
-	);
+	const autoRolloverDate: Date | undefined = autoRolloverTime
+		? new Date(new Date().toLocaleDateString() + ' ' + autoRolloverTime)
+		: undefined;
 
-	// if it has been more than 24 hours since the last rollover, AND it is past the autoRolloverTime for the past 24 hours, then rollover
+	// get the most recent autoRolloverDate, and if it matches autoRolloverDate, then return
+	const mostRecentAutoRollover: Date | undefined = await plugin.storage.getSynced(
+		'mostRecentAutoRollover'
+	);
+	if (mostRecentAutoRollover && autoRolloverDate && mostRecentAutoRollover >= autoRolloverDate) {
+		return;
+	}
+
+	await plugin.storage.setSynced('mostRecentAutoRollover', autoRolloverDate);
+
+	// if it has been more than 24 hours since the last rollover,s
+	// AND it is past the autoRolloverTime for the past 24 hours, then rollover
 	if (
 		lastRolloverTime &&
-		howLongAgo(lastRolloverTime) > 0 &&
+		howLongAgo(lastRolloverTime) > 0 && // Adjusted the condition here
 		autoRolloverDate &&
-		autoRolloverDate.getHours() <= new Date().getHours()
+		autoRolloverDate < new Date()
 	) {
-		console.log("It's time to rollover!");
 		await handleUnfinishedTodos(plugin);
 		await plugin.storage.setSynced('lastRollover', new Date());
 	}
