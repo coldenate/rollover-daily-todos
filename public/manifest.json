@@ -1,0 +1,22 @@
+{
+	"manifestVersion": 1,
+	"id": "rollover-daily-todos",
+	"name": "Rollover Daily Todos",
+	"author": "coldenate",
+	"repoUrl": "https://github.com/coldenate/rollover-daily-todos",
+	"version": {
+		"major": 0,
+		"minor": 1,
+		"patch": 0
+	},
+	"theme": [],
+	"enableOnMobile": true,
+	"description": "✅ Move unfinished todos to the next day, each day.",
+	"requestNative": false,
+	"requiredScopes": [
+		{
+			"type": "All",
+			"level": "ReadCreateModify"
+		}
+	]
+}
