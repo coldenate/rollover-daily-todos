@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/.github/logo_squircle.svg" alt="Rollover Logo" width="400" height="200"><br/>
+<img src="https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/public/logo.svg" alt="Rollover Logo" width="400" height="200"><br/>
 Rollover Daily Todos</h1>
 
 <h3 align="center">Didn't finish yesterday's task? Do it today!</h3>
