@@ -12,6 +12,9 @@ import '../style.css';
 import '../App.css';
 import React, { useEffect, useState } from 'react';
 
+let clearToAutoRoll: boolean = false;
+let plugin_passthrough: ReactRNPlugin;
+
 function hasHappened(date: Date): boolean {
 	const today = new Date();
 
@@ -99,6 +102,12 @@ async function processRem(
 	}
 }
 
+setTimeout(() => {
+	setInterval(async () => {
+		await autoRollover(plugin_passthrough);
+	}, 5000);
+}, 25);
+
 async function onActivate(plugin: ReactRNPlugin) {
 	// A command that inserts text into the editor if focused.
 
@@ -115,6 +124,8 @@ async function onActivate(plugin: ReactRNPlugin) {
 			await handleUnfinishedTodos(plugin);
 		},
 	});
+
+	// Don't let this go into production.
 
 	await plugin.app.registerCommand({
 		id: 'debug-auto-rollover',
@@ -133,9 +144,24 @@ async function onActivate(plugin: ReactRNPlugin) {
 				'mostRecentAutoRollover',
 				new Date(new Date().setDate(new Date().getDate() - 7))
 			);
+			// await autoRollover(plugin);
+		},
+	});
+
+	await plugin.app.registerCommand({
+		id: 'bump-auto-rollover',
+		name: 'Bump Auto Rollover',
+		description:
+			'Ping the Auto Rollover Checker to make sure your stuff is automatically rolling over',
+		quickCode: 'debug bump',
+		icon: '🐛',
+		keywords: 'debug, bump, auto, rollover',
+		action: async () => {
 			await autoRollover(plugin);
 		},
 	});
+
+	// Don't let that go into production.
 
 	// settings
 
@@ -161,7 +187,8 @@ async function onActivate(plugin: ReactRNPlugin) {
 	});
 
 	// jobs
-	await autoRollover(plugin);
+	plugin_passthrough = plugin;
+	clearToAutoRoll = true;
 }
 async function autoRollover(plugin: ReactRNPlugin) {
 	const lastRolloverTime: Date | undefined = await plugin.storage.getSynced('lastRollover');
