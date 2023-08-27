@@ -14,6 +14,7 @@ import React, { useEffect, useState } from 'react';
 
 let clearToAutoRoll: boolean = false;
 let plugin_passthrough: ReactRNPlugin;
+let timeSettingsChanged: boolean = false;
 
 function hasHappened(date: Date): boolean {
 	const today = new Date();
@@ -21,7 +22,7 @@ function hasHappened(date: Date): boolean {
 	today.setHours(0, 0, 0, 0);
 	date.setHours(0, 0, 0, 0);
 
-	return date <= today;
+	return date < today;
 }
 
 function howLongAgo(date: Date): number {
@@ -50,16 +51,26 @@ async function isFinishedTodo(rem: any): Promise<boolean> {
 	return (await rem.isTodo()) && (await rem.getTodoStatus()) === 'Finished';
 }
 
-function acceptTodoRem(dailyDocument: Rem, todoRems: { [key: string]: any[] }, rem: Rem) {
+interface TodoRem {
+	rem: Rem;
+	rememberedParent?: Rem;
+}
+
+function acceptTodoRem(
+	dailyDocument: Rem,
+	todoRems: { [key: string]: TodoRem[] },
+	rem: Rem,
+	rememberedParent?: Rem
+) {
 	const text = String(dailyDocument.text); // 'May 15th, 2023'
 	const dateWithoutSuffix = text.replace(/(\d+)(st|nd|rd|th)/, '$1');
 	const date = new Date(dateWithoutSuffix);
 
 	if (hasHappened(date)) {
 		if (todoRems[text]) {
-			todoRems[text].push(rem);
+			todoRems[text].push({ rem: rem, rememberedParent: rememberedParent });
 		} else {
-			todoRems[text] = [rem];
+			todoRems[text] = [{ rem: rem, rememberedParent: rememberedParent }];
 		}
 	}
 }
@@ -67,7 +78,7 @@ function acceptTodoRem(dailyDocument: Rem, todoRems: { [key: string]: any[] }, r
 async function getIncompleteTodos(
 	plugin: ReactRNPlugin,
 	remId: any,
-	todoRems: { [key: string]: any[] },
+	todoRems: { [key: string]: TodoRem[] },
 	dailyDocument: Rem
 ) {
 	await processRem(plugin, remId, todoRems, dailyDocument);
@@ -76,7 +87,7 @@ async function getIncompleteTodos(
 async function processRem(
 	plugin: ReactRNPlugin,
 	remId: any,
-	todoRems: { [key: string]: any[] },
+	todoRems: { [key: string]: TodoRem[] },
 	dailyDocument: Rem,
 	rememberedParent: Rem | undefined = undefined
 ) {
@@ -84,10 +95,10 @@ async function processRem(
 
 	if (rem && (await isUnfinishedTodo(rem))) {
 		if (rememberedParent) {
-			acceptTodoRem(dailyDocument, todoRems, rememberedParent);
-			return;
+			acceptTodoRem(dailyDocument, todoRems, rem, rememberedParent);
+		} else {
+			acceptTodoRem(dailyDocument, todoRems, rem);
 		}
-		acceptTodoRem(dailyDocument, todoRems, rem);
 		return;
 	}
 
@@ -107,7 +118,6 @@ setTimeout(() => {
 		await autoRollover(plugin_passthrough);
 	}, 5000);
 }, 25);
-
 async function onActivate(plugin: ReactRNPlugin) {
 	// A command that inserts text into the editor if focused.
 
@@ -137,12 +147,8 @@ async function onActivate(plugin: ReactRNPlugin) {
 		keyboardShortcut: 'ctrl+shift+alt+d',
 		action: async () => {
 			await plugin.storage.setSynced(
-				'lastRollover',
-				new Date(new Date().setDate(new Date().getDate() - 7))
-			);
-			await plugin.storage.setSynced(
-				'mostRecentAutoRollover',
-				new Date(new Date().setDate(new Date().getDate() - 7))
+				'lastAutoRolloverTime',
+				new Date(new Date().setDate(new Date().getDate() - 1))
 			);
 			// await autoRollover(plugin);
 		},
@@ -165,6 +171,14 @@ async function onActivate(plugin: ReactRNPlugin) {
 
 	// settings
 
+	await plugin.settings.registerBooleanSetting({
+		id: 'portal-mode',
+		title: 'Portal Mode',
+		description:
+			"Causes unfinished todos to be portaled into today's daily document, instead of moved.",
+		defaultValue: true,
+	});
+
 	await plugin.settings.registerNumberSetting({
 		id: 'dateLimit',
 		title: 'Date Limit',
@@ -177,7 +191,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 		title: 'Time of Day to Rollover Todos',
 		description:
 			'The time of day to rollover todos. This is in local time. (hh:mm) 24 hour format',
-		defaultValue: '00:00',
+		defaultValue: '23:00',
 		validators: [
 			{
 				type: 'regex',
@@ -190,47 +204,45 @@ async function onActivate(plugin: ReactRNPlugin) {
 	plugin_passthrough = plugin;
 	clearToAutoRoll = true;
 }
-async function autoRollover(plugin: ReactRNPlugin) {
-	const lastRolloverTime: Date | undefined = await plugin.storage.getSynced('lastRollover');
-	const autoRolloverTime: string | undefined = await plugin.settings.getSetting('autoRollover'); // hh:mm
-	const lastRolloverDate: Date | undefined = lastRolloverTime
-		? new Date(lastRolloverTime)
-		: undefined;
-	// take hh:mm and convert that to a Date object for today
-	const autoRolloverDate: Date | undefined = autoRolloverTime
-		? new Date(new Date().toLocaleDateString() + ' ' + autoRolloverTime)
-		: undefined;
 
-	// get the most recent autoRolloverDate, and if it matches autoRolloverDate, then return
-	const mostRecentAutoRollover: Date | undefined = await plugin.storage.getSynced(
-		'mostRecentAutoRollover'
+async function autoRollover(plugin: ReactRNPlugin) {
+	let isNextDay: boolean = false;
+	const today = new Date();
+	const hoursAndMinutesOfTimeToAutoRollover: string = await plugin.settings.getSetting(
+		'autoRollover'
 	);
-	if (mostRecentAutoRollover && autoRolloverDate && mostRecentAutoRollover >= autoRolloverDate) {
-		return;
+	const lastAutoRolloverTime: Date | undefined = await plugin.storage.getSynced(
+		'lastAutoRolloverTime'
+	);
+
+	if (lastAutoRolloverTime) {
+		const lastAutoRolloverTimeDay = lastAutoRolloverTime.getDate();
+		const todayDay = today.getDate();
+
+		if (lastAutoRolloverTimeDay !== todayDay) {
+			isNextDay = true;
+		}
 	}
 
-	await plugin.storage.setSynced('mostRecentAutoRollover', autoRolloverDate);
+	if (isNextDay) {
+		const hoursAndMinutes = hoursAndMinutesOfTimeToAutoRollover.split(':');
+		const hours = Number(hoursAndMinutes[0]);
+		const minutes = Number(hoursAndMinutes[1]);
 
-	// if it has been more than 24 hours since the last rollover,s
-	// AND it is past the autoRolloverTime for the past 24 hours, then rollover
-	if (
-		lastRolloverTime &&
-		howLongAgo(lastRolloverTime) > 0 && // Adjusted the condition here
-		autoRolloverDate &&
-		autoRolloverDate < new Date()
-	) {
-		await handleUnfinishedTodos(plugin);
-		await plugin.storage.setSynced('lastRollover', new Date());
+		const todayHours = today.getHours();
+		const todayMinutes = today.getMinutes();
+
+		if (todayHours >= hours && todayMinutes >= minutes) {
+			await handleUnfinishedTodos(plugin);
+			await plugin.storage.setSynced('lastAutoRolloverTime', today);
+		}
 	}
 }
 
 async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	let dateLimit: number = await plugin.settings.getSetting('dateLimit');
-	console.log('dateLimit:', dateLimit);
 	const dailyDocument = await plugin.powerup.getPowerupByCode(BuiltInPowerupCodes.DailyDocument);
-	console.log('dailyDocument:', dailyDocument);
 	const dailyDocuments = await dailyDocument?.taggedRem();
-	console.log('dailyDocuments:', dailyDocuments);
 
 	const todoRems: any = {};
 	// handle if daily document is undefined and if todoRem is undefined
@@ -244,16 +256,12 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 
 	for (const dailyDocument of dailyDocuments) {
 		const createdAt = new Date(dailyDocument.createdAt);
-		console.log('dailyDocument:', dailyDocument, howLongAgo(createdAt));
 		const daysAgo: number = howLongAgo(createdAt);
 		if (daysAgo > dateLimit) {
-			console.log('daysAgo:', daysAgo, dateLimit);
-
 			continue;
 		}
 		await getIncompleteTodos(plugin, dailyDocument._id, todoRems, dailyDocument);
 	}
-	console.log('todoRems:', todoRems);
 
 	// if there are no unfinished todos, return
 	if (todoRems.length === 0) {
@@ -274,13 +282,25 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	if (!todayDailyDocument) {
 		console.log('Sorry. No daily document for TODAY has been created.');
 		return;
-		// we can handle whether the user wants to create a daily document if it doesn't exist. This is optional because ya know, maybe they don't want to create a daily document
+		// we can handle whether the user wants to create a daily document if it doesn't exist. This is optional because ya know, maybe they don't want to create a daily document. It'll just be waiting in that doc until its made.
 	}
 
 	for (const dateString in todoRems) {
-		let remArray: Array<any> = todoRems[dateString];
-		for (const rem of remArray) {
-			const newRems = await plugin.rem.moveRems([rem], todayDailyDocument, 0);
+		console.log(todoRems);
+		const portalMode = await plugin.settings.getSetting('portal-mode');
+		for (const todoRem of todoRems[dateString]) {
+			if (portalMode) {
+				const newPortal = await plugin.rem.createPortal();
+				if (newPortal) {
+					await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
+					console.log(todoRem?.rememberedParent);
+					console.log(todoRem?.rem);
+					await todoRem?.rememberedParent?.addToPortal(newPortal);
+					await todoRem?.rem.addToPortal(newPortal);
+				}
+			} else if (!portalMode) {
+				const newRems = await plugin.rem.moveRems([todoRem.rem], todayDailyDocument, 0);
+			}
 		}
 	}
 

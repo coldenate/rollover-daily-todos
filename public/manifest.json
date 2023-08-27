@@ -7,11 +7,11 @@
 	"version": {
 		"major": 0,
 		"minor": 1,
-		"patch": 1
+		"patch": 2
 	},
 	"theme": [],
 	"enableOnMobile": true,
-	"description": "✅ Move unfinished todos to the next day, each day.",
+	"description": "✅ Move unfinished todos to the next day, on the daily.",
 	"requestNative": false,
 	"requiredScopes": [
 		{
