@@ -211,9 +211,10 @@ async function autoRollover(plugin: ReactRNPlugin) {
 	const hoursAndMinutesOfTimeToAutoRollover: string = await plugin.settings.getSetting(
 		'autoRollover'
 	);
-	const lastAutoRolloverTime: Date | undefined = await plugin.storage.getSynced(
-		'lastAutoRolloverTime'
-	);
+	const lastAutoRolloverTimeStr = await plugin.storage.getSynced('lastAutoRolloverTime');
+	const lastAutoRolloverTime: Date | undefined = lastAutoRolloverTimeStr
+		? new Date(lastAutoRolloverTimeStr as string)
+		: undefined;
 
 	if (lastAutoRolloverTime) {
 		const lastAutoRolloverTimeDay = lastAutoRolloverTime.getDate();
