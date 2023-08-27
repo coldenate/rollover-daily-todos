@@ -11,7 +11,7 @@
 	},
 	"theme": [],
 	"enableOnMobile": true,
-	"description": "✅ Move unfinished todos to the next day, on the daily.",
+	"description": "✅ Automate moving unfinished todos to the next day, daily.",
 	"requestNative": false,
 	"requiredScopes": [
 		{
