@@ -2,10 +2,12 @@ import {
 	AppEvents,
 	BuiltInPowerupCodes,
 	declareIndexPlugin,
+	PropertyType,
 	ReactRNPlugin,
 	Rem,
 	RichText,
 	RichTextNamespace,
+	SelectSourceType,
 	WidgetLocation,
 } from '@remnote/plugin-sdk';
 import '../style.css';
@@ -176,7 +178,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 		title: 'Portal Mode',
 		description:
 			"Causes unfinished todos to be portaled into today's daily document, instead of moved.",
-		defaultValue: true,
+		defaultValue: false,
 	});
 
 	await plugin.settings.registerNumberSetting({
@@ -199,6 +201,31 @@ async function onActivate(plugin: ReactRNPlugin) {
 			},
 		],
 	});
+
+	// powerups
+
+	await plugin.app.registerPowerup(
+		'Copied Parent Rem', // human-readable name
+		'copiedParentRem', // powerup code used to uniquely identify the powerup
+		'Automatically tagged to Rems that were made as a copy of another rem as a result of Rolling Over Daily Todos', // description
+		{
+			slots: [
+				{
+					// slot code used to uniquely identify the powerup slot
+					code: 'originalRem',
+					// human readable slot code name
+					name: 'Original Rem',
+					// (optional: false by default)
+					// only allow the slot to be modified programatically
+					onlyProgrammaticModifying: true,
+					// (optional: false by default)
+					// hide the slot - don't show it in the editor
+					hidden: true,
+					selectSourceType: SelectSourceType.Relation,
+				},
+			],
+		}
+	);
 
 	// jobs
 	plugin_passthrough = plugin;
@@ -281,26 +308,33 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 
 	const todayDailyDocument = await plugin.date.getTodaysDoc();
 	if (!todayDailyDocument) {
-		console.log('Sorry. No daily document for TODAY has been created.');
+		console.info('Sorry. No daily document for TODAY has been created.');
 		return;
 		// we can handle whether the user wants to create a daily document if it doesn't exist. This is optional because ya know, maybe they don't want to create a daily document. It'll just be waiting in that doc until its made.
 	}
 
 	for (const dateString in todoRems) {
-		console.log(todoRems);
 		const portalMode = await plugin.settings.getSetting('portal-mode');
 		for (const todoRem of todoRems[dateString]) {
 			if (portalMode) {
 				const newPortal = await plugin.rem.createPortal();
 				if (newPortal) {
 					await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
-					console.log(todoRem?.rememberedParent);
-					console.log(todoRem?.rem);
 					await todoRem?.rememberedParent?.addToPortal(newPortal);
 					await todoRem?.rem.addToPortal(newPortal);
 				}
 			} else if (!portalMode) {
-				const newRems = await plugin.rem.moveRems([todoRem.rem], todayDailyDocument, 0);
+				const copiedParent = await plugin.rem.createRem();
+				if (copiedParent) {
+					copiedParent.setText(todoRem.rememberedParent?.text);
+
+					await copiedParent.addPowerup('copiedParentRem');
+					await copiedParent.setPowerupProperty('copiedParentRem', 'originalRem', [
+						todoRem.rememberedParent?._id,
+					]);
+					await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
+					await plugin.rem.moveRems([todoRem.rem], copiedParent, 0);
+				}
 			}
 		}
 	}
@@ -309,7 +343,7 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 }
 
 async function onDeactivate(_: ReactRNPlugin) {
-	console.error('Deactivated!');
+	console.warn('Deactivated Rollover Daily Todos!');
 }
 
 declareIndexPlugin(onActivate, onDeactivate);
