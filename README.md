@@ -11,9 +11,15 @@ Rollover Daily Todos</h1>
 ## Usage
 
 1. Open RemNote and download the Rollover Daily Todos Plugin from the [RemNote Plugin Store](https://remnote.com/plugins/rollover-daily-todos).
-2. It will run automatically every day at 00:00.
-   1. You can configure this in the settings!
-      - What time it runs, and how far back it looks for unfinished tasks
+2. It will run automatically every day at 23:00.
+
+## Configurations
+
+- Time of day to Rollover.
+- How far back to search for unfinished todos.
+- Portal Mode (**Beta**)
+   - Portal mode is an experimental mode that allows Rollover Daily Todos to use RemNote's portal technology to link to your old todos without actually moving them around and copying parents.
+   - Portal Mode is great to keep things tidy! :) [](https://cdn.betterttv.net/emote/59adba12c765ac30a43b9984/1x.png) 
 
 ## Thanks to
 
