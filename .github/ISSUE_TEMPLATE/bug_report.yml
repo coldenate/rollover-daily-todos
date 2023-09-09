@@ -2,8 +2,6 @@ name: Bug Report / Issue Report
 description: File a bug report or report an issue
 title: "[Bug]: "
 labels: ["bug", "triage"]
-assignees:
-  - coldenate
 body:
   - type: markdown
     attributes:
@@ -17,6 +15,29 @@ body:
       placeholder: ex. Your Discord Account on the RemNote Discord Server, Or you can specify (here) to keep communication on GitHub.
     validations:
       required: false
+  - type: checkboxes
+    id: didUpdate
+    attributes:
+      label: Did you update to the latest plugin version?
+      description: Please do this as sometimes RemNote cannot auto-update plugins that change their manifests.
+      options:
+        - label: Updated RemNote
+          required: true
+  - type: input
+    id: remnoteVersion
+    attributes:
+      label: RemNote app version
+      description: Please select the version of the RemNote app you are using, or select "Other" to enter a custom value.
+    validations:
+      required: true
+  - type: input
+    id: pluginVersion
+    attributes:
+      label: Rollover Daily Todos plugin version
+      description: Please enter the version of the plugin you are using.
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
   - type: textarea
     id: what-happened
     attributes:
@@ -31,7 +52,7 @@ body:
     attributes:
       label: Relevant log output
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
-      render: shell
+      render: Shell
   - type: checkboxes
     id: terms
     attributes:
