@@ -96,6 +96,12 @@ async function processRem(
 	const rem: Rem | undefined = await plugin.rem.findOne(remId);
 
 	if (rem && (await isUnfinishedTodo(rem))) {
+		if (await rememberedParent?.hasPowerup('doNotRollover')) {
+			return;
+		}
+		if (await rem.hasPowerup('doNotRollover')) {
+			return;
+		}
 		if (rememberedParent) {
 			acceptTodoRem(dailyDocument, todoRems, rem, rememberedParent);
 		} else {
@@ -137,24 +143,43 @@ async function onActivate(plugin: ReactRNPlugin) {
 		},
 	});
 
-	// Don't let this go into production.
-
 	await plugin.app.registerCommand({
-		id: 'debug-auto-rollover',
-		name: 'Debug Auto Rollover',
-		description: 'Set the last rollover time to seven days ago',
-		quickCode: 'debug',
-		icon: '🐛',
-		keywords: 'debug, auto, rollover',
-		keyboardShortcut: 'ctrl+shift+alt+d',
+		id: 'do-not-rollover',
+		name: 'Do Not Rollover Rem',
+		quickCode: 'dnr',
+		keywords: 'do, not, rollover, rem',
 		action: async () => {
-			await plugin.storage.setSynced(
-				'lastAutoRolloverTime',
-				new Date(new Date().setDate(new Date().getDate() - 1))
-			);
-			// await autoRollover(plugin);
+			const rem = await plugin.focus.getFocusedRem();
+			await rem?.addPowerup('doNotRollover');
+
+			// if (await rem.hasPowerup('doNotRollover')) {
+			// 	await rem.removePowerup('doNotRollover');
+			// 	return;
+			// }
+
+			// developer note: for now, I am not allowing this plugin the permission to delete anything. (see manifest.json)
+			// upon popular request, I will allow this plugin to delete things. but that is only if it seems necessary.
 		},
 	});
+
+	// Don't let this go into production.
+
+	// await plugin.app.registerCommand({
+	// 	id: 'debug-auto-rollover',
+	// 	name: 'Debug Auto Rollover',
+	// 	description: 'Set the last rollover time to seven days ago',
+	// 	quickCode: 'debug',
+	// 	icon: '🐛',
+	// 	keywords: 'debug, auto, rollover',
+	// 	keyboardShortcut: 'ctrl+shift+alt+d',
+	// 	action: async () => {
+	// 		await plugin.storage.setSynced(
+	// 			'lastAutoRolloverTime',
+	// 			new Date(new Date().setDate(new Date().getDate() - 1))
+	// 		);
+	// 		// await autoRollover(plugin);
+	// 	},
+	// });
 
 	await plugin.app.registerCommand({
 		id: 'bump-auto-rollover',
@@ -227,6 +252,22 @@ async function onActivate(plugin: ReactRNPlugin) {
 		}
 	);
 
+	await plugin.app.registerPowerup(
+		'Do Not Rollover',
+		'doNotRollover',
+		'Tag this to a rem to prevent it from being rolled over.',
+		{
+			slots: [
+				{
+					code: 'reason',
+					name: 'Reason',
+					onlyProgrammaticModifying: false,
+					hidden: false,
+				},
+			],
+		}
+	);
+
 	// jobs
 	plugin_passthrough = plugin;
 	clearToAutoRoll = true;
@@ -268,9 +309,11 @@ async function autoRollover(plugin: ReactRNPlugin) {
 }
 
 async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
+	let parentRemsAlreadyRolledOver: Rem[] = [];
 	let dateLimit: number = await plugin.settings.getSetting('dateLimit');
 	const dailyDocument = await plugin.powerup.getPowerupByCode(BuiltInPowerupCodes.DailyDocument);
 	const dailyDocuments = await dailyDocument?.taggedRem();
+	const portalMode = await plugin.settings.getSetting('portal-mode');
 
 	const todoRems: any = {};
 	// handle if daily document is undefined and if todoRem is undefined
@@ -296,8 +339,6 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		return;
 	}
 
-	await plugin.app.toast('You have some unfinished Todos! Moving them now them to today...');
-
 	// get today's daily document
 	const today = new Date();
 	const todayText = today.toLocaleDateString('en-US', {
@@ -313,37 +354,47 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		// we can handle whether the user wants to create a daily document if it doesn't exist. This is optional because ya know, maybe they don't want to create a daily document. It'll just be waiting in that doc until its made.
 	}
 
-	for (const dateString in todoRems) {
-		const portalMode = await plugin.settings.getSetting('portal-mode');
-		for (const todoRem of todoRems[dateString]) {
-			if (portalMode) {
-				const newPortal = await plugin.rem.createPortal();
-				if (newPortal) {
-					await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
-					await todoRem?.rememberedParent?.addToPortal(newPortal);
-					await todoRem?.rem.addToPortal(newPortal);
-				}
-			} else if (!portalMode) {
-				const copiedParent = await plugin.rem.createRem();
-				if (copiedParent) {
-					copiedParent.setText(todoRem.rememberedParent?.text);
+	await plugin.app.toast("Moving unfinished todos to today's Daily Document.");
 
-					await copiedParent.addPowerup('copiedParentRem');
-					await copiedParent.setPowerupProperty('copiedParentRem', 'originalRem', [
-						todoRem.rememberedParent?._id,
-					]);
-					await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
-					await plugin.rem.moveRems([todoRem.rem], copiedParent, 0);
-				}
+	for (const dateString in todoRems) {
+		let copiedParent: Rem | undefined = undefined;
+		if (portalMode) {
+			// due to the behavior of remnote portals, we only need to create a portal for the parent rem once.
+			if (parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent)) {
+				continue;
+			}
+			const newPortal = await plugin.rem.createPortal();
+			if (!newPortal) {
+				continue;
+			}
+			await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
+			for (const todoRem of todoRems[dateString]) {
+				await todoRem?.rememberedParent?.addToPortal(newPortal);
+				await todoRem?.rem.addToPortal(newPortal);
+			}
+		} else {
+			if (!parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent)) {
+				copiedParent = await plugin.rem.createRem();
+			}
+			if (!copiedParent) {
+				continue;
+			}
+			await copiedParent.setText(todoRems[dateString][0].rememberedParent?.text);
+			await copiedParent.addPowerup('copiedParentRem');
+			await copiedParent.setPowerupProperty('copiedParentRem', 'originalRem', [
+				todoRems[dateString][0].rememberedParent?._id,
+			]);
+			await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
+			for (const todoRem of todoRems[dateString]) {
+				await plugin.rem.moveRems([todoRem.rem], copiedParent, 0);
 			}
 		}
+		parentRemsAlreadyRolledOver.push(todoRems[dateString][0].rememberedParent);
 	}
 
 	return todoRems;
 }
 
-async function onDeactivate(_: ReactRNPlugin) {
-	console.warn('Deactivated Rollover Daily Todos!');
-}
+async function onDeactivate(_: ReactRNPlugin) {}
 
 declareIndexPlugin(onActivate, onDeactivate);
