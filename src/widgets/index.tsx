@@ -1,18 +1,10 @@
 import {
-	AppEvents,
 	BuiltInPowerupCodes,
 	declareIndexPlugin,
-	PropertyType,
 	ReactRNPlugin,
 	Rem,
-	RichText,
-	RichTextNamespace,
 	SelectSourceType,
-	WidgetLocation,
 } from '@remnote/plugin-sdk';
-import '../style.css';
-import '../App.css';
-import React, { useEffect, useState } from 'react';
 
 let clearToAutoRoll: boolean = false;
 let plugin_passthrough: ReactRNPlugin;
@@ -230,29 +222,6 @@ async function onActivate(plugin: ReactRNPlugin) {
 	// powerups
 
 	await plugin.app.registerPowerup(
-		'Copied Parent Rem', // human-readable name
-		'copiedParentRem', // powerup code used to uniquely identify the powerup
-		'Automatically tagged to Rems that were made as a copy of another rem as a result of Rolling Over Daily Todos', // description
-		{
-			slots: [
-				{
-					// slot code used to uniquely identify the powerup slot
-					code: 'originalRem',
-					// human readable slot code name
-					name: 'Original Rem',
-					// (optional: false by default)
-					// only allow the slot to be modified programatically
-					onlyProgrammaticModifying: true,
-					// (optional: false by default)
-					// hide the slot - don't show it in the editor
-					hidden: true,
-					selectSourceType: SelectSourceType.Relation,
-				},
-			],
-		}
-	);
-
-	await plugin.app.registerPowerup(
 		'Do Not Rollover',
 		'doNotRollover',
 		'Tag this to a rem to prevent it from being rolled over.',
@@ -380,10 +349,6 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				continue;
 			}
 			await copiedParent.setText(todoRems[dateString][0].rememberedParent?.text);
-			await copiedParent.addPowerup('copiedParentRem');
-			await copiedParent.setPowerupProperty('copiedParentRem', 'originalRem', [
-				todoRems[dateString][0].rememberedParent?._id,
-			]);
 			await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
 			for (const todoRem of todoRems[dateString]) {
 				await plugin.rem.moveRems([todoRem.rem], copiedParent, 0);
