@@ -1,14 +1,7 @@
-import {
-	BuiltInPowerupCodes,
-	declareIndexPlugin,
-	ReactRNPlugin,
-	Rem,
-	SelectSourceType,
-} from '@remnote/plugin-sdk';
+import { BuiltInPowerupCodes, declareIndexPlugin, ReactRNPlugin, Rem } from '@remnote/plugin-sdk';
 
 let clearToAutoRoll: boolean = false;
 let plugin_passthrough: ReactRNPlugin;
-let timeSettingsChanged: boolean = false;
 
 function hasHappened(date: Date): boolean {
 	const today = new Date();
@@ -50,21 +43,23 @@ interface TodoRem {
 	rememberedParent?: Rem;
 }
 
-function acceptTodoRem(
+async function acceptTodoRem(
 	dailyDocument: Rem,
 	todoRems: { [key: string]: TodoRem[] },
 	rem: Rem,
 	rememberedParent?: Rem
 ) {
-	const text = String(dailyDocument.text); // 'May 15th, 2023'
-	const dateWithoutSuffix = text.replace(/(\d+)(st|nd|rd|th)/, '$1');
-	const date = new Date(dateWithoutSuffix);
+	const timestamp: string = await dailyDocument.getPowerupProperty(
+		BuiltInPowerupCodes.DailyDocument,
+		'Timestamp'
+	);
+	const date = new Date(Number(timestamp) * 1000);
 
 	if (hasHappened(date)) {
-		if (todoRems[text]) {
-			todoRems[text].push({ rem: rem, rememberedParent: rememberedParent });
+		if (todoRems[timestamp]) {
+			todoRems[timestamp].push({ rem: rem, rememberedParent: rememberedParent });
 		} else {
-			todoRems[text] = [{ rem: rem, rememberedParent: rememberedParent }];
+			todoRems[timestamp] = [{ rem: rem, rememberedParent: rememberedParent }];
 		}
 	}
 }
@@ -95,9 +90,9 @@ async function processRem(
 			return;
 		}
 		if (rememberedParent) {
-			acceptTodoRem(dailyDocument, todoRems, rem, rememberedParent);
+			await acceptTodoRem(dailyDocument, todoRems, rem, rememberedParent);
 		} else {
-			acceptTodoRem(dailyDocument, todoRems, rem);
+			await acceptTodoRem(dailyDocument, todoRems, rem);
 		}
 		return;
 	}
@@ -115,9 +110,12 @@ async function processRem(
 
 setTimeout(() => {
 	setInterval(async () => {
-		await autoRollover(plugin_passthrough);
+		if (clearToAutoRoll) {
+			await autoRollover(plugin_passthrough);
+		}
 	}, 5000);
 }, 25);
+
 async function onActivate(plugin: ReactRNPlugin) {
 	// A command that inserts text into the editor if focused.
 
@@ -189,6 +187,19 @@ async function onActivate(plugin: ReactRNPlugin) {
 	// Don't let that go into production.
 
 	// settings
+	await plugin.settings.registerStringSetting({
+		id: 'autoRollover',
+		title: 'Time of Day to Rollover Todos',
+		description:
+			'The time of day to rollover todos. This is in local time. (hh:mm) 24 hour format',
+		defaultValue: '23:00',
+		validators: [
+			{
+				type: 'regex',
+				arg: '^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$',
+			},
+		],
+	});
 
 	await plugin.settings.registerBooleanSetting({
 		id: 'portal-mode',
@@ -203,20 +214,6 @@ async function onActivate(plugin: ReactRNPlugin) {
 		title: 'Date Limit',
 		description: 'The number of days to look back for unfinished todos',
 		defaultValue: 7,
-	});
-
-	await plugin.settings.registerStringSetting({
-		id: 'autoRollover',
-		title: 'Time of Day to Rollover Todos',
-		description:
-			'The time of day to rollover todos. This is in local time. (hh:mm) 24 hour format',
-		defaultValue: '23:00',
-		validators: [
-			{
-				type: 'regex',
-				arg: '^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$',
-			},
-		],
 	});
 
 	// powerups
@@ -307,14 +304,6 @@ async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	if (todoRems.length === 0) {
 		return;
 	}
-
-	// get today's daily document
-	const today = new Date();
-	const todayText = today.toLocaleDateString('en-US', {
-		month: 'long',
-		day: 'numeric',
-		year: 'numeric',
-	});
 
 	const todayDailyDocument = await plugin.date.getTodaysDoc();
 	if (!todayDailyDocument) {
