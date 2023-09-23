@@ -14,7 +14,43 @@ setTimeout(() => {
 }, 25);
 
 async function onActivate(plugin: ReactRNPlugin) {
-	// A command that inserts text into the editor if focused.
+	// settings
+	await plugin.settings.registerStringSetting({
+		id: 'autoRollover',
+		title: 'Time of Day to Rollover Todos',
+		description:
+			'The time of day to rollover todos. This is in local time. (hh:mm) 24 hour format',
+		defaultValue: '23:00',
+		validators: [
+			{
+				type: 'regex',
+				arg: '^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$',
+			},
+		],
+	});
+
+	await plugin.settings.registerBooleanSetting({
+		id: 'portal-mode',
+		title: 'Portal Mode',
+		description:
+			"Causes unfinished todos to be portaled into today's daily document, instead of moved.",
+		defaultValue: false,
+	});
+
+	await plugin.settings.registerBooleanSetting({
+		id: 'debug-mode',
+		title: 'Debug Mode',
+		description:
+			'Enables certain testing commands. Non-destructive. Please restart RemNote after enabling.',
+		defaultValue: false,
+	});
+
+	await plugin.settings.registerNumberSetting({
+		id: 'dateLimit',
+		title: 'Date Limit',
+		description: 'The number of days to look back for unfinished todos',
+		defaultValue: 7,
+	});
 
 	// commands
 
@@ -49,68 +85,71 @@ async function onActivate(plugin: ReactRNPlugin) {
 		},
 	});
 
-	// Don't let this go into production.
+	await plugin.settings.getSetting('debug-mode').then(async (setting) => {
+		if (setting) {
+			await plugin.app.registerCommand({
+				id: 'debug-auto-rollover',
+				name: 'Debug Auto Rollover',
+				description: 'Set the last rollover time to seven days ago',
+				quickCode: 'debug',
+				icon: '🐛',
+				keywords: 'debug, auto, rollover',
+				keyboardShortcut: 'ctrl+shift+alt+d',
+				action: async () => {
+					await plugin.storage.setSynced(
+						'lastAutoRolloverTime',
+						new Date(new Date().setDate(new Date().getDate() - 1))
+					);
+					// await autoRollover(plugin);
+				},
+			});
 
-	// await plugin.app.registerCommand({
-	// 	id: 'debug-auto-rollover',
-	// 	name: 'Debug Auto Rollover',
-	// 	description: 'Set the last rollover time to seven days ago',
-	// 	quickCode: 'debug',
-	// 	icon: '🐛',
-	// 	keywords: 'debug, auto, rollover',
-	// 	keyboardShortcut: 'ctrl+shift+alt+d',
-	// 	action: async () => {
-	// 		await plugin.storage.setSynced(
-	// 			'lastAutoRolloverTime',
-	// 			new Date(new Date().setDate(new Date().getDate() - 1))
-	// 		);
-	// 		// await autoRollover(plugin);
-	// 	},
-	// });
+			await plugin.app.registerCommand({
+				id: 'bump-auto-rollover',
+				name: 'Bump Auto Rollover',
+				description:
+					'Ping the Auto Rollover Checker to make sure your stuff is automatically rolling over',
+				quickCode: 'debug bump',
+				icon: '🐛',
+				keywords: 'debug, bump, auto, rollover',
+				action: async () => {
+					await autoRollover(plugin);
+				},
+			});
 
-	await plugin.app.registerCommand({
-		id: 'bump-auto-rollover',
-		name: 'Bump Auto Rollover',
-		description:
-			'Ping the Auto Rollover Checker to make sure your stuff is automatically rolling over',
-		quickCode: 'debug bump',
-		icon: '🐛',
-		keywords: 'debug, bump, auto, rollover',
-		action: async () => {
-			await autoRollover(plugin);
-		},
-	});
+			await plugin.app.registerCommand({
+				id: 'log-values',
+				name: 'Log Values',
+				description: 'Log the values of certain variables',
+				quickCode: 'debug log',
+				icon: '🐛',
+				action: async () => {
+					console.log('lastAutoRolloverTime: ');
+					console.log(await plugin.storage.getSynced('lastAutoRolloverTime'));
 
-	// Don't let that go into production.
+					console.log('lastRolloverTime: ');
+					console.log(await plugin.storage.getSynced('lastRolloverTime'));
 
-	// settings
-	await plugin.settings.registerStringSetting({
-		id: 'autoRollover',
-		title: 'Time of Day to Rollover Todos',
-		description:
-			'The time of day to rollover todos. This is in local time. (hh:mm) 24 hour format',
-		defaultValue: '23:00',
-		validators: [
-			{
-				type: 'regex',
-				arg: '^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$',
-			},
-		],
-	});
+					console.log('autoRolloverTime: ');
+					console.log(await plugin.settings.getSetting('autoRollover'));
 
-	await plugin.settings.registerBooleanSetting({
-		id: 'portal-mode',
-		title: 'Portal Mode',
-		description:
-			"Causes unfinished todos to be portaled into today's daily document, instead of moved.",
-		defaultValue: false,
-	});
+					console.log('dateLimit: ');
+					console.log(await plugin.settings.getSetting('dateLimit'));
 
-	await plugin.settings.registerNumberSetting({
-		id: 'dateLimit',
-		title: 'Date Limit',
-		description: 'The number of days to look back for unfinished todos',
-		defaultValue: 7,
+					console.log('debugMode: ');
+					console.log(await plugin.settings.getSetting('debug-mode'));
+
+					console.log('portalMode: ');
+					console.log(await plugin.settings.getSetting('portal-mode'));
+
+					await plugin.app.toast(
+						`Last Auto Rollover Time: ${await plugin.storage.getSynced(
+							'lastAutoRolloverTime'
+						)}`
+					);
+				},
+			});
+		}
 	});
 
 	// powerups
