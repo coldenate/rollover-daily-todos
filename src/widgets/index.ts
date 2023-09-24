@@ -85,6 +85,19 @@ async function onActivate(plugin: ReactRNPlugin) {
 		},
 	});
 
+	await plugin.app.registerCommand({
+		id: 'omni-rollover',
+		description:
+			'Functionally allows you to have a Rem always rollover in the Daily Document as a Reminder. Only works when there are unfinished todos.',
+		name: 'Omni Rollover',
+		quickCode: 'or',
+		keywords: 'omni, rollover',
+		action: async () => {
+			const rem = await plugin.focus.getFocusedRem();
+			await rem?.addPowerup('omniRollover');
+		},
+	});
+
 	await plugin.settings.getSetting('debug-mode').then(async (setting) => {
 		if (setting) {
 			await plugin.app.registerCommand({
@@ -158,6 +171,22 @@ async function onActivate(plugin: ReactRNPlugin) {
 		'Do Not Rollover',
 		'doNotRollover',
 		'Tag this to a rem to prevent it from being rolled over.',
+		{
+			slots: [
+				{
+					code: 'reason',
+					name: 'Reason',
+					onlyProgrammaticModifying: false,
+					hidden: false,
+				},
+			],
+		}
+	);
+
+	await plugin.app.registerPowerup(
+		'OmniRollover',
+		'omniRollover',
+		'Allows you to rollover a rem from anywhere.',
 		{
 			slots: [
 				{

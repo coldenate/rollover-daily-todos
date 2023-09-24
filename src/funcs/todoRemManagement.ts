@@ -2,7 +2,7 @@ import { BuiltInPowerupCodes, ReactRNPlugin, Rem } from '@remnote/plugin-sdk';
 import { hasHappened, howLongAgo, isFinishedTodo, isUnfinishedTodo } from './calculations';
 import { TodoRems } from '../types/TodoRem';
 
-export async function acceptTodoRem(
+async function acceptTodoRem(
 	dailyDocument: Rem,
 	todoRems: TodoRems,
 	rem: Rem,
@@ -22,37 +22,74 @@ export async function acceptTodoRem(
 		}
 	}
 }
-export async function processRem(
+
+async function acceptOmniRem(todoRems: TodoRems, rem: Rem, rememberedParent?: Rem) {
+	if (todoRems['omni']) {
+		todoRems['omni'].push({ rem: rem, rememberedParent: rememberedParent });
+	} else {
+		todoRems['omni'] = [{ rem: rem, rememberedParent: rememberedParent }];
+	}
+}
+
+async function processRem(
 	plugin: ReactRNPlugin,
 	remId: any,
 	todoRems: TodoRems,
-	dailyDocument: Rem,
-	rememberedParent: Rem | undefined = undefined
+	dailyDocument: Rem | null,
+	rememberedParent: Rem | undefined = undefined,
+	isOmniRem: boolean = false
 ) {
 	const rem: Rem | undefined = await plugin.rem.findOne(remId);
 
-	if (rem && (await isUnfinishedTodo(rem))) {
-		if (await rememberedParent?.hasPowerup('doNotRollover')) {
+	if (!isOmniRem && dailyDocument) {
+		if (rem && (await isUnfinishedTodo(rem))) {
+			if (await rememberedParent?.hasPowerup('doNotRollover')) {
+				return;
+			}
+			if (await rem.hasPowerup('doNotRollover')) {
+				return;
+			}
+			if (rememberedParent) {
+				await acceptTodoRem(dailyDocument!, todoRems, rem, rememberedParent);
+			} else {
+				await acceptTodoRem(dailyDocument!, todoRems, rem);
+			}
 			return;
 		}
-		if (await rem.hasPowerup('doNotRollover')) {
+
+		if (rem && (await isFinishedTodo(rem))) {
 			return;
 		}
-		if (rememberedParent) {
-			await acceptTodoRem(dailyDocument, todoRems, rem, rememberedParent);
-		} else {
-			await acceptTodoRem(dailyDocument, todoRems, rem);
+
+		if (rem?.children) {
+			for (const childId of rem.children) {
+				await processRem(plugin, childId, todoRems, dailyDocument, rem);
+			}
 		}
-		return;
-	}
+	} else if (isOmniRem) {
+		if (rem && (await isUnfinishedTodo(rem))) {
+			if (await rememberedParent?.hasPowerup('doNotRollover')) {
+				return;
+			}
+			if (await rem.hasPowerup('doNotRollover')) {
+				return;
+			}
+			if (rememberedParent) {
+				await acceptOmniRem(todoRems, rem, rememberedParent);
+			} else {
+				await acceptOmniRem(todoRems, rem);
+			}
+			return;
+		}
 
-	if (rem && (await isFinishedTodo(rem))) {
-		return;
-	}
+		if (rem && (await isFinishedTodo(rem))) {
+			return;
+		}
 
-	if (rem?.children) {
-		for (const childId of rem.children) {
-			await processRem(plugin, childId, todoRems, dailyDocument, rem);
+		if (rem?.children) {
+			for (const childId of rem.children) {
+				await processRem(plugin, childId, todoRems, null, rem, true);
+			}
 		}
 	}
 }
@@ -80,6 +117,13 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 			continue;
 		}
 		await processRem(plugin, dailyDocument._id, todoRems, dailyDocument);
+	}
+
+	const omniRem = await plugin.powerup.getPowerupByCode('omniRollover');
+	const omniRems = await omniRem?.taggedRem();
+
+	for (const omniRem of omniRems || []) {
+		await processRem(plugin, omniRem._id, todoRems, null, undefined, true);
 	}
 
 	const todayDailyDocument = await plugin.date.getTodaysDoc();
@@ -111,6 +155,12 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					await todoRem?.rem.addToPortal(newPortal);
 				}
 			} else if (!portalMode) {
+				if (dateString === 'omni') {
+					await plugin.app.toast(
+						'The Omni Rollover feature is not safe when Portal Mode is off.'
+					);
+					continue;
+				}
 				if (
 					todoRems[dateString][0].rememberedParent &&
 					!parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent!)
@@ -123,7 +173,6 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				await copiedParent.setText(
 					todoRems[dateString][0].rememberedParent!.text || ['Untitled Rem']
 				);
-
 				await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
 				for (const todoRem of todoRems[dateString]) {
 					await plugin.rem.moveRems([todoRem.rem], copiedParent, 0);
