@@ -1,6 +1,7 @@
 import { BuiltInPowerupCodes, ReactRNPlugin, Rem } from '@remnote/plugin-sdk';
 import { hasHappened, howLongAgo, isFinishedTodo, isUnfinishedTodo } from './calculations';
 import { TodoRems } from '../types/TodoRem';
+import { cleanupPastDocuments } from './cleanup';
 
 async function acceptTodoRem(
 	dailyDocument: Rem,
@@ -146,6 +147,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					continue;
 				}
 				const newPortal = await plugin.rem.createPortal();
+				await newPortal?.addPowerup('rolled');
 				if (!newPortal) {
 					continue;
 				}
@@ -166,6 +168,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					!parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent!)
 				) {
 					copiedParent = await plugin.rem.createRem();
+					await copiedParent?.addPowerup('rolled');
 				}
 				if (!copiedParent) {
 					continue;
@@ -187,6 +190,8 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	} else if (Object.keys(todoRems).length < 0) {
 		await plugin.app.toast('Something went wrong. ... very wrong 😅');
 	}
+
+	// await cleanupPastDocuments(plugin);
 
 	return todoRems;
 }

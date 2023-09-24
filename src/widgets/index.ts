@@ -1,6 +1,7 @@
 import { declareIndexPlugin, ReactRNPlugin } from '@remnote/plugin-sdk';
 import { handleUnfinishedTodos } from '../funcs/todoRemManagement';
 import { autoRollover } from '../funcs/autoRollover';
+import { cleanupPastDocuments } from '../funcs/cleanup';
 
 let clearToAutoRoll: boolean = false;
 let plugin_passthrough: ReactRNPlugin;
@@ -34,7 +35,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 		title: 'Portal Mode',
 		description:
 			"Causes unfinished todos to be portaled into today's daily document, instead of moved.",
-		defaultValue: false,
+		defaultValue: true,
 	});
 
 	await plugin.settings.registerBooleanSetting({
@@ -63,6 +64,17 @@ async function onActivate(plugin: ReactRNPlugin) {
 		keyboardShortcut: 'ctrl+shift+alt+o',
 		action: async () => {
 			await handleUnfinishedTodos(plugin);
+		},
+	});
+
+	await plugin.app.registerCommand({
+		id: 'cleanup-rolled-over-rems',
+		name: 'Cleanup Rolled Over Rems',
+		quickCode: 'cleanup',
+		icon: '🧹',
+		keywords: 'cleanup, rolled, over, rems',
+		action: async () => {
+			await cleanupPastDocuments(plugin);
 		},
 	});
 
@@ -166,6 +178,13 @@ async function onActivate(plugin: ReactRNPlugin) {
 	});
 
 	// powerups
+
+	await plugin.app.registerPowerup(
+		'rolled',
+		'rolled',
+		'Indicates that this rem has been rolled over.',
+		{ slots: [] }
+	);
 
 	await plugin.app.registerPowerup(
 		'Do Not Rollover',
