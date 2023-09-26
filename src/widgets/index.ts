@@ -192,14 +192,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 		'doNotRollover',
 		'Tag this to a rem to prevent it from being rolled over.',
 		{
-			slots: [
-				{
-					code: 'reason',
-					name: 'Reason',
-					onlyProgrammaticModifying: false,
-					hidden: false,
-				},
-			],
+			slots: [],
 		}
 	);
 
@@ -208,14 +201,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 		'omniRollover',
 		'Allows you to rollover a rem from anywhere.',
 		{
-			slots: [
-				{
-					code: 'reason',
-					name: 'Reason',
-					onlyProgrammaticModifying: false,
-					hidden: false,
-				},
-			],
+			slots: [],
 		}
 	);
 
