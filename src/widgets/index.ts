@@ -58,6 +58,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 	await plugin.app.registerCommand({
 		id: 'rollover-todos',
 		name: 'Rollover Unfinished Todos',
+		description: "Note this will not run cleanup, so you'll have to do that manually.",
 		quickCode: 'rollover',
 		icon: '📅',
 		keywords: 'rollover, todos, unfinished',

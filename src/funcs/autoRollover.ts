@@ -1,5 +1,6 @@
 import { ReactRNPlugin } from '@remnote/plugin-sdk';
 import { handleUnfinishedTodos } from './todoRemManagement';
+import { cleanupPastDocuments } from './cleanup';
 
 export async function autoRollover(plugin: ReactRNPlugin) {
 	let isNextDay: boolean = false;
@@ -30,6 +31,7 @@ export async function autoRollover(plugin: ReactRNPlugin) {
 		const todayMinutes = today.getMinutes();
 
 		if (todayHours >= hours && todayMinutes >= minutes) {
+			await cleanupPastDocuments(plugin);
 			await handleUnfinishedTodos(plugin);
 			await plugin.storage.setSynced('lastAutoRolloverTime', today);
 		}

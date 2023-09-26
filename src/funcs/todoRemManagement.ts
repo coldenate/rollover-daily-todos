@@ -191,7 +191,5 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		await plugin.app.toast('Something went wrong. ... very wrong 😅');
 	}
 
-	// await cleanupPastDocuments(plugin);
-
 	return todoRems;
 }
