@@ -180,7 +180,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 	// powerups
 
 	await plugin.app.registerPowerup(
-		'rolled',
+		'RO',
 		'rolled',
 		'Indicates that this rem has been rolled over.',
 		{ slots: [] }
