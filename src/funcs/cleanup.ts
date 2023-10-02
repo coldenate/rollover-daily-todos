@@ -12,12 +12,12 @@ export async function cleanupPastDocuments(plugin: ReactRNPlugin) {
 	console.log(rolledOverRems);
 
 	for (const rem of rolledOverRems) {
-		// const dailyDocument = await plugin.powerup.getPowerupByCode(
-		// 	BuiltInPowerupCodes.DailyDocument
-		// );
-		// if (dailyDocument?.children?.includes(rem._id)) {
-		// 	continue;
-		// }
+		const dailyDocument = await plugin.powerup.getPowerupByCode(
+			BuiltInPowerupCodes.DailyDocument
+		);
+		if (dailyDocument?.children?.includes(rem._id)) {
+			continue;
+		}
 		rem.remove();
 	}
 }
