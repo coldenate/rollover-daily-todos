@@ -2,6 +2,7 @@ import { declareIndexPlugin, ReactRNPlugin } from '@remnote/plugin-sdk';
 import { handleUnfinishedTodos } from '../funcs/todoRemManagement';
 import { autoRollover } from '../funcs/autoRollover';
 import { cleanupPastDocuments } from '../funcs/cleanup';
+import { debug } from 'console';
 
 let clearToAutoRoll: boolean = false;
 let plugin_passthrough: ReactRNPlugin;
@@ -41,8 +42,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 	await plugin.settings.registerBooleanSetting({
 		id: 'debug-mode',
 		title: 'Debug Mode',
-		description:
-			'Enables certain testing commands. Non-destructive. Please restart RemNote after enabling.',
+		description: 'Enables certain testing commands. Non-destructive.',
 		defaultValue: false,
 	});
 
@@ -111,8 +111,9 @@ async function onActivate(plugin: ReactRNPlugin) {
 		},
 	});
 
-	await plugin.settings.getSetting('debug-mode').then(async (setting) => {
-		if (setting) {
+	plugin.track(async (reactivePlugin) => {
+		const debugMode = await reactivePlugin.settings.getSetting('debug-mode');
+		if (debugMode) {
 			await plugin.app.registerCommand({
 				id: 'debug-auto-rollover',
 				name: 'Debug Auto Rollover',
@@ -175,6 +176,8 @@ async function onActivate(plugin: ReactRNPlugin) {
 					);
 				},
 			});
+
+			await plugin.app.toast('Debug Mode Enabled for RTD!');
 		}
 	});
 
