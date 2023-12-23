@@ -9,7 +9,6 @@ export async function cleanupPastDocuments(plugin: ReactRNPlugin) {
 	}
 
 	plugin.app.toast('Cleaning up past documents of portals and orphaned rolled over rem...');
-	console.log(rolledOverRems);
 
 	for (const rem of rolledOverRems) {
 		const dailyDocument = await plugin.powerup.getPowerupByCode(
