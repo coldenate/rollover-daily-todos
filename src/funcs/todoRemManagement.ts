@@ -139,13 +139,14 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		for (const dateString in todoRems) {
 			let copiedParent: Rem | undefined = undefined;
 			if (portalMode) {
-				// due to the behavior of remnote portals, we only need to create a portal for the parent rem once.
+				// const groupPortals = await plugin.settings.getSetting('group-portals');
 				if (
 					todoRems[dateString][0].rememberedParent &&
-					parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent!) // this could cause issues... I'm not too familiar with ! in typescript
+					parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent!)
 				) {
 					continue;
 				}
+
 				const newPortal = await plugin.rem.createPortal();
 				await newPortal?.addPowerup('rolled');
 				if (!newPortal) {
@@ -153,8 +154,17 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				}
 				await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
 				for (const todoRem of todoRems[dateString]) {
-					await todoRem?.rememberedParent?.addToPortal(newPortal);
-					await todoRem?.rem.addToPortal(newPortal);
+					const rememberedParent = todoRem.rememberedParent;
+					if (rememberedParent) {
+						const isDailyDoc = await rememberedParent.hasPowerup(
+							BuiltInPowerupCodes.DailyDocument
+						);
+						if (!isDailyDoc) {
+							await todoRem?.rememberedParent?.addToPortal(newPortal);
+						}
+						await plugin.rem.moveRems([todoRem.rem], rememberedParent, 0);
+						await todoRem?.rem.addToPortal(newPortal);
+					}
 				}
 			} else if (!portalMode) {
 				if (dateString === 'omni') {

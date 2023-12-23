@@ -40,6 +40,13 @@ async function onActivate(plugin: ReactRNPlugin) {
 	});
 
 	await plugin.settings.registerBooleanSetting({
+		id: 'group-portals',
+		title: 'Group Portals',
+		description: 'If enabled, todos will be grouped into portals for each daily document.',
+		defaultValue: false,
+	});
+
+	await plugin.settings.registerBooleanSetting({
 		id: 'debug-mode',
 		title: 'Debug Mode',
 		description: 'Enables certain testing commands. Non-destructive.',
