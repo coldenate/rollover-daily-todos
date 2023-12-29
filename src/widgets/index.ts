@@ -71,6 +71,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 		keywords: 'rollover, todos, unfinished',
 		keyboardShortcut: 'ctrl+shift+alt+o',
 		action: async () => {
+			await cleanupPastDocuments(plugin);
 			await handleUnfinishedTodos(plugin);
 		},
 	});
