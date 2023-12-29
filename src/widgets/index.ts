@@ -118,6 +118,18 @@ async function onActivate(plugin: ReactRNPlugin) {
 		},
 	});
 
+	await plugin.app.registerCommand({
+		id: 'remove-omni-rollover',
+		description: 'Removes the Omni Rollover powerup from the Rem.',
+		name: 'Remove Omni Rollover',
+		quickCode: 'ror',
+		keywords: 'remove, omni, rollover',
+		action: async () => {
+			const rem = await plugin.focus.getFocusedRem();
+			await rem?.removePowerup('omniRollover');
+		},
+	});
+
 	plugin.track(async (reactivePlugin) => {
 		const debugMode = await reactivePlugin.settings.getSetting('debug-mode');
 		if (debugMode) {
@@ -135,6 +147,24 @@ async function onActivate(plugin: ReactRNPlugin) {
 						new Date(new Date().setDate(new Date().getDate() - 1))
 					);
 					// await autoRollover(plugin);
+				},
+			});
+
+			await plugin.app.registerCommand({
+				id: 'view-omni-rollover-powerup',
+				name: 'View Omni Rollover Rem',
+				description: 'View the Rem that has the Omni Rollover powerup',
+				quickCode: 'debug view',
+				icon: '🐛',
+				keywords: 'debug, view, omni, rollover',
+				action: async () => {
+					const rem = await plugin.powerup.getPowerupByCode('omniRollover');
+
+					if (rem) {
+						await plugin.window.openRem(rem);
+					} else {
+						await plugin.app.toast('No Rem has the Omni Rollover powerup');
+					}
 				},
 			});
 
