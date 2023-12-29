@@ -30,6 +30,7 @@ async function acceptOmniRem(todoRems: TodoRems, rem: Rem, rememberedParent?: Re
 	} else {
 		todoRems['omni'] = [{ rem: rem, rememberedParent: rememberedParent }];
 	}
+	return todoRems;
 }
 
 async function processRem(
@@ -137,6 +138,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	if (Object.keys(todoRems).length > 0) {
 		await plugin.app.toast("Moving unfinished todos to today's Daily Document.");
 		for (const dateString in todoRems) {
+			// dateString can also be 'omni'
 			let copiedParent: Rem | undefined = undefined;
 			if (portalMode) {
 				// const groupPortals = await plugin.settings.getSetting('group-portals');
@@ -155,6 +157,11 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
 				for (const todoRem of todoRems[dateString]) {
 					const rememberedParent = todoRem.rememberedParent;
+
+					if (dateString === 'omni') {
+						await todoRem?.rem.addToPortal(newPortal);
+					}
+
 					if (rememberedParent) {
 						const isDailyDoc = await rememberedParent.hasPowerup(
 							BuiltInPowerupCodes.DailyDocument
