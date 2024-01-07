@@ -98,13 +98,15 @@ async function processRem(
 export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	let parentRemsAlreadyRolledOver: Rem[] = [];
 	let dateLimit: number = await plugin.settings.getSetting('dateLimit');
-	const dailyDocument = await plugin.powerup.getPowerupByCode(BuiltInPowerupCodes.DailyDocument);
-	const dailyDocuments = await dailyDocument?.taggedRem();
+	const dailyDocumentPowerup = await plugin.powerup.getPowerupByCode(
+		BuiltInPowerupCodes.DailyDocument
+	);
+	const dailyDocuments = await dailyDocumentPowerup?.taggedRem();
 	const portalMode = await plugin.settings.getSetting('portal-mode');
 
 	const todoRems: TodoRems = {};
 	// handle if daily document is undefined and if todoRem is undefined
-	if (!dailyDocument) {
+	if (!dailyDocumentPowerup) {
 		return;
 	}
 
@@ -112,8 +114,13 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		return;
 	}
 
+	const timeStampSlot = await plugin.powerup.getPowerupSlotByCode(
+		BuiltInPowerupCodes.DailyDocument,
+		'Timestamp'
+	);
 	for (const dailyDocument of dailyDocuments) {
-		const createdAt = new Date(dailyDocument.createdAt);
+		const timeStampValue = await dailyDocument.getTagPropertyValue(timeStampSlot!._id);
+		const createdAt = new Date(Number(timeStampValue) * 1000);
 		const daysAgo: number = howLongAgo(createdAt);
 		if (daysAgo > dateLimit) {
 			continue;
