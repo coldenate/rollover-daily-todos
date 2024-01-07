@@ -9,10 +9,9 @@ let plugin_passthrough: ReactRNPlugin;
 
 setTimeout(() => {
 	setInterval(async () => {
-		if (clearToAutoRoll) {
-			await autoRollover(plugin_passthrough);
-		}
-	}, 5000);
+		await plugin_passthrough.app.waitForInitialSync();
+		await autoRollover(plugin_passthrough);
+	}, 300000);
 }, 25);
 
 async function onActivate(plugin: ReactRNPlugin) {
@@ -221,32 +220,30 @@ async function onActivate(plugin: ReactRNPlugin) {
 
 	// powerups
 
-	await plugin.app.registerPowerup(
-		'RO',
-		'rolled',
-		'Indicates that this rem has been rolled over.',
-		{ slots: [] }
-	);
+	await plugin.app.registerPowerup({
+		name: 'RO',
+		code: 'rolled',
+		description: 'Indicates that this rem has been rolled over.',
+		options: { slots: [] },
+	});
 
-	await plugin.app.registerPowerup(
-		'Do Not Rollover',
-		'doNotRollover',
-		'Tag this to a rem to prevent it from being rolled over.',
-		{
-			slots: [],
-		}
-	);
+	await plugin.app.registerPowerup({
+		name: 'Do Not Rollover',
+		code: 'doNotRollover',
+		description: 'Tag this to a rem to prevent it from being rolled over.',
+		options: { slots: [] },
+	});
 
-	await plugin.app.registerPowerup(
-		'OmniRollover',
-		'omniRollover',
-		'Allows you to rollover a rem from anywhere.',
-		{
-			slots: [],
-		}
-	);
+	await plugin.app.registerPowerup({
+		name: 'OmniRollover',
+		code: 'omniRollover',
+		description: 'Allows you to rollover a rem from anywhere.',
+		options: { slots: [] },
+	});
 
 	// jobs
+	await plugin.app.waitForInitialSync();
+	await autoRollover(plugin);
 	plugin_passthrough = plugin;
 	clearToAutoRoll = true;
 }
