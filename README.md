@@ -35,23 +35,12 @@ Rollover Daily Todos is a game-changing RemNote plugin designed to supercharge y
 
 ### Feature Showcase
 
-<div style="display: flex; justify-content: space-between;">
-	<div style="width: 45%;">
-		<h4>Feature Example: Orchestrate Your Daily Todos</h4>
-		<div style="width: 100%; height: 0; padding-bottom: 100%; position: relative;">
-			<img src="https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/.github/orchestra.gif" alt="Rollover Logo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;">
-		</div>
-		<div>
-			<p>With Rollover Daily Todos, you can easily orchestrate your daily todos and keep track of your extra todo lists not in your Daily Documents.</p>
-		</div>
-	</div>
-	<div style="width: 45%;">
-		<h4>Rolling Over (No-Portal Mode)</h4>
-		<div style="width: 100%; height: 0; padding-bottom: 100%; position: relative;">
-			<img src="https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/.github/video.gif" alt="Rollover Logo" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain;">
-		</div>
-	</div>
-</div>
+#### Orchestrate Your Daily Todos with other Todo Lists
+
+![Rollover Logo](https://raw.githubusercontent.com/coldenate/rollover-daily-todos/main/.github/orchestra.gif)
+*Theme used: [Catppuccin](https://remnote.com/plugins/catppuccin)*
+
+With Rollover Daily Todos, you can easily orchestrate your daily todos and keep track of your extra todo lists not in your Daily Documents.
 
 ## 🛠️ Installation
 
