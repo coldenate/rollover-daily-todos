@@ -5,9 +5,8 @@ import { cleanupPastDocuments } from './cleanup';
 export async function autoRollover(plugin: ReactRNPlugin) {
 	let isNextDay: boolean = false;
 	const today = new Date();
-	const hoursAndMinutesOfTimeToAutoRollover: string = await plugin.settings.getSetting(
-		'autoRollover'
-	);
+	const hoursAndMinutesOfTimeToAutoRollover: string =
+		await plugin.settings.getSetting('autoRollover');
 	const lastAutoRolloverTimeStr = await plugin.storage.getSynced('lastAutoRolloverTime');
 	const lastAutoRolloverTime: Date | undefined = lastAutoRolloverTimeStr
 		? new Date(lastAutoRolloverTimeStr as string)
@@ -31,8 +30,17 @@ export async function autoRollover(plugin: ReactRNPlugin) {
 		const todayMinutes = today.getMinutes();
 
 		if (todayHours >= hours && todayMinutes >= minutes) {
-			await cleanupPastDocuments(plugin);
-			await handleUnfinishedTodos(plugin);
+			// Check if auto rollover is disabled
+			const isAutoRolloverDisabled =
+				await plugin.settings.getSetting('disable-auto-rollover');
+
+			if (!isAutoRolloverDisabled) {
+				// Only perform rollover actions if not disabled
+				await cleanupPastDocuments(plugin);
+				await handleUnfinishedTodos(plugin);
+			}
+
+			// Always update the timestamp regardless of whether actions were performed
 			await plugin.storage.setSynced('lastAutoRolloverTime', today);
 		}
 	}

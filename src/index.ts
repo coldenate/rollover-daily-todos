@@ -30,6 +30,14 @@ async function onActivate(plugin: ReactRNPlugin) {
 	});
 
 	await plugin.settings.registerBooleanSetting({
+		id: 'disable-auto-rollover',
+		title: 'Disable Auto Rollover',
+		description:
+			'If enabled, todos will only rollover when manually triggered via the command.',
+		defaultValue: false,
+	});
+
+	await plugin.settings.registerBooleanSetting({
 		id: 'portal-mode',
 		title: 'Portal Mode',
 		description:
