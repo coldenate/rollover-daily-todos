@@ -1,8 +1,7 @@
-import { declareIndexPlugin, ReactRNPlugin } from '@remnote/plugin-sdk';
-import { handleUnfinishedTodos } from '../funcs/todoRemManagement';
-import { autoRollover } from '../funcs/autoRollover';
-import { cleanupPastDocuments } from '../funcs/cleanup';
-import { debug } from 'console';
+import { AppEvents, declareIndexPlugin, ReactRNPlugin } from '@remnote/plugin-sdk';
+import { handleUnfinishedTodos } from './funcs/todoRemManagement';
+import { autoRollover } from './funcs/autoRollover';
+import { cleanupPastDocuments } from './funcs/cleanup';
 
 let clearToAutoRoll: boolean = false;
 let plugin_passthrough: ReactRNPlugin;
@@ -217,7 +216,6 @@ async function onActivate(plugin: ReactRNPlugin) {
 			await plugin.app.toast('Debug Mode Enabled for RTD!');
 		}
 	});
-
 	// powerups
 
 	await plugin.app.registerPowerup({

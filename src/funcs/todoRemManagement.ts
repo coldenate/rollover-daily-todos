@@ -1,7 +1,6 @@
 import { BuiltInPowerupCodes, ReactRNPlugin, Rem } from '@remnote/plugin-sdk';
 import { hasHappened, howLongAgo, isFinishedTodo, isUnfinishedTodo } from './calculations';
 import { TodoRems } from '../types/TodoRem';
-import { cleanupPastDocuments } from './cleanup';
 
 async function acceptTodoRem(
 	dailyDocument: Rem,
