@@ -175,7 +175,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 						if (!isDailyDoc) {
 							await todoRem?.rememberedParent?.addToPortal(newPortal);
 						}
-						await plugin.rem.moveRems([todoRem.rem], rememberedParent, 0);
+						await plugin.rem.moveRems([todoRem.rem], rememberedParent, (rememberedParent.children ?? []).length);
 						await todoRem?.rem.addToPortal(newPortal);
 					}
 				}
@@ -201,7 +201,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				);
 				await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
 				for (const todoRem of todoRems[dateString]) {
-					await plugin.rem.moveRems([todoRem.rem], copiedParent, 0);
+					await plugin.rem.moveRems([todoRem.rem], copiedParent, (copiedParent.children ?? []).length);
 				}
 			}
 			if (todoRems[dateString][0].rememberedParent) {
