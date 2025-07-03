@@ -39,7 +39,8 @@ async function processRem(
 	todoRems: TodoRems,
 	dailyDocument: Rem | null,
 	rememberedParent: Rem | undefined = undefined,
-	isOmniRem: boolean = false
+	isOmniRem: boolean = false,
+	retainCompletedTodos: boolean = true
 ) {
 	const rem: Rem | undefined = await plugin.rem.findOne(remId);
 
@@ -61,17 +62,20 @@ async function processRem(
 
 		if (rem && (await isFinishedTodo(rem))) {
 			// Include completed todos to preserve them as portals in original daily documents
-			if (rememberedParent) {
-				await acceptTodoRem(dailyDocument!, todoRems, rem, rememberedParent, true);
-			} else {
-				await acceptTodoRem(dailyDocument!, todoRems, rem, undefined, true);
+			// only if the retain-completed-todos setting is enabled
+			if (retainCompletedTodos) {
+				if (rememberedParent) {
+					await acceptTodoRem(dailyDocument!, todoRems, rem, rememberedParent, true);
+				} else {
+					await acceptTodoRem(dailyDocument!, todoRems, rem, undefined, true);
+				}
 			}
 			return;
 		}
 
 		if (rem?.children) {
 			for (const childId of rem.children) {
-				await processRem(plugin, childId, todoRems, dailyDocument, rem);
+				await processRem(plugin, childId, todoRems, dailyDocument, rem, false, retainCompletedTodos);
 			}
 		}
 	} else if (isOmniRem) {
@@ -92,17 +96,20 @@ async function processRem(
 
 		if (rem && (await isFinishedTodo(rem))) {
 			// Include completed todos to preserve them as portals in original locations
-			if (rememberedParent) {
-				await acceptOmniRem(todoRems, rem, rememberedParent, true);
-			} else {
-				await acceptOmniRem(todoRems, rem, undefined, true);
+			// only if the retain-completed-todos setting is enabled
+			if (retainCompletedTodos) {
+				if (rememberedParent) {
+					await acceptOmniRem(todoRems, rem, rememberedParent, true);
+				} else {
+					await acceptOmniRem(todoRems, rem, undefined, true);
+				}
 			}
 			return;
 		}
 
 		if (rem?.children) {
 			for (const childId of rem.children) {
-				await processRem(plugin, childId, todoRems, null, rem, true);
+				await processRem(plugin, childId, todoRems, null, rem, true, retainCompletedTodos);
 			}
 		}
 	}
@@ -115,6 +122,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	);
 	const dailyDocuments = await dailyDocumentPowerup?.taggedRem();
 	const portalMode = await plugin.settings.getSetting('portal-mode');
+	const retainCompletedTodos = await plugin.settings.getSetting('retain-completed-todos');
 
 	const todoRems: TodoRems = {};
 	// handle if daily document is undefined and if todoRem is undefined
@@ -137,14 +145,14 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		if (daysAgo > dateLimit) {
 			continue;
 		}
-		await processRem(plugin, dailyDocument._id, todoRems, dailyDocument);
+		await processRem(plugin, dailyDocument._id, todoRems, dailyDocument, undefined, false, retainCompletedTodos);
 	}
 
 	const omniRem = await plugin.powerup.getPowerupByCode('omniRollover');
 	const omniRems = await omniRem?.taggedRem();
 
 	for (const omniRem of omniRems || []) {
-		await processRem(plugin, omniRem._id, todoRems, null, undefined, true);
+		await processRem(plugin, omniRem._id, todoRems, null, undefined, true, retainCompletedTodos);
 	}
 
 	const todayDailyDocument = await plugin.date.getTodaysDoc();
@@ -155,7 +163,11 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	}
 
 	if (Object.keys(todoRems).length > 0) {
-		await plugin.app.toast("Processing todos for rollover and preserving completed ones.");
+		if (retainCompletedTodos) {
+			await plugin.app.toast("Processing todos for rollover and preserving completed ones.");
+		} else {
+			await plugin.app.toast("Processing todos for rollover.");
+		}
 		for (const dateString in todoRems) {
 			// dateString can also be 'omni'
 			
@@ -164,7 +176,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 			const completedTodos = todoRems[dateString].filter(todo => todo.isCompleted);
 			
 			// Handle completed todos - preserve them as portals in their original daily documents
-			if (portalMode && completedTodos.length > 0 && dateString !== 'omni') {
+			if (portalMode && retainCompletedTodos && completedTodos.length > 0 && dateString !== 'omni') {
 				// Find the original daily document by timestamp
 				let originalDailyDocument = null;
 				for (const doc of dailyDocuments) {
@@ -227,7 +239,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				}
 			} else if (!portalMode) {
 				// Handle completed todos in non-portal mode - leave them in their original locations
-				if (completedTodos.length > 0 && dateString !== 'omni') {
+				if (retainCompletedTodos && completedTodos.length > 0 && dateString !== 'omni') {
 					// In non-portal mode, completed todos should remain in their original daily documents
 					// No action needed as they're already in the right place
 				}

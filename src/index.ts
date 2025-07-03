@@ -53,6 +53,13 @@ async function onActivate(plugin: ReactRNPlugin) {
 	});
 
 	await plugin.settings.registerBooleanSetting({
+		id: 'retain-completed-todos',
+		title: 'Retain Completed Todos',
+		description: 'If enabled, completed todos will be preserved as portals in their original daily documents during rollover.',
+		defaultValue: true,
+	});
+
+	await plugin.settings.registerBooleanSetting({
 		id: 'debug-mode',
 		title: 'Debug Mode',
 		description: 'Enables certain testing commands. Non-destructive.',
