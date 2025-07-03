@@ -194,6 +194,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 			if (portalMode) {
 				// const groupPortals = await plugin.settings.getSetting('group-portals');
 				if (
+					unfinishedTodos.length > 0 &&
 					unfinishedTodos[0].rememberedParent &&
 					parentRemsAlreadyRolledOver.includes(unfinishedTodos[0].rememberedParent!)
 				) {
@@ -225,6 +226,12 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					}
 				}
 			} else if (!portalMode) {
+				// Handle completed todos in non-portal mode - leave them in their original locations
+				if (completedTodos.length > 0 && dateString !== 'omni') {
+					// In non-portal mode, completed todos should remain in their original daily documents
+					// No action needed as they're already in the right place
+				}
+				
 				if (dateString === 'omni') {
 					await plugin.app.toast(
 						'The Omni Rollover feature is not safe when Portal Mode is off.'
@@ -232,6 +239,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					continue;
 				}
 				if (
+					unfinishedTodos.length > 0 &&
 					unfinishedTodos[0].rememberedParent &&
 					!parentRemsAlreadyRolledOver.includes(unfinishedTodos[0].rememberedParent!)
 				) {
@@ -249,7 +257,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					await plugin.rem.moveRems([todoRem.rem], copiedParent, (copiedParent.children ?? []).length);
 				}
 			}
-			if (unfinishedTodos[0].rememberedParent) {
+			if (unfinishedTodos.length > 0 && unfinishedTodos[0].rememberedParent) {
 				parentRemsAlreadyRolledOver.push(unfinishedTodos[0].rememberedParent!);
 			}
 		}
