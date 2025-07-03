@@ -1,6 +1,6 @@
 import { BuiltInPowerupCodes, ReactRNPlugin, Rem } from '@remnote/plugin-sdk';
-import { hasHappened, howLongAgo, isFinishedTodo, isUnfinishedTodo } from './calculations';
 import { TodoRems } from '../types/TodoRem';
+import { hasHappened, howLongAgo, isFinishedTodo, isUnfinishedTodo } from './calculations';
 
 async function acceptTodoRem(
 	dailyDocument: Rem,
@@ -175,7 +175,11 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 						if (!isDailyDoc) {
 							await todoRem?.rememberedParent?.addToPortal(newPortal);
 						}
-						await plugin.rem.moveRems([todoRem.rem], rememberedParent, (rememberedParent.children ?? []).length);
+						await plugin.rem.moveRems(
+							[todoRem.rem],
+							rememberedParent,
+							(rememberedParent.children ?? []).length
+						);
 						await todoRem?.rem.addToPortal(newPortal);
 					}
 				}
@@ -201,7 +205,11 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 				);
 				await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
 				for (const todoRem of todoRems[dateString]) {
-					await plugin.rem.moveRems([todoRem.rem], copiedParent, (copiedParent.children ?? []).length);
+					await plugin.rem.moveRems(
+						[todoRem.rem],
+						copiedParent,
+						(copiedParent.children ?? []).length
+					);
 				}
 			}
 			if (todoRems[dateString][0].rememberedParent) {
