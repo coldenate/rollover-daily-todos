@@ -6,7 +6,8 @@ async function acceptTodoRem(
 	dailyDocument: Rem,
 	todoRems: TodoRems,
 	rem: Rem,
-	rememberedParent?: Rem
+	rememberedParent?: Rem,
+	isCompleted: boolean = false
 ) {
 	const timestamp: string = await dailyDocument.getPowerupProperty(
 		BuiltInPowerupCodes.DailyDocument,
@@ -16,18 +17,18 @@ async function acceptTodoRem(
 
 	if (hasHappened(date)) {
 		if (todoRems[timestamp]) {
-			todoRems[timestamp].push({ rem: rem, rememberedParent: rememberedParent });
+			todoRems[timestamp].push({ rem: rem, rememberedParent: rememberedParent, isCompleted: isCompleted });
 		} else {
-			todoRems[timestamp] = [{ rem: rem, rememberedParent: rememberedParent }];
+			todoRems[timestamp] = [{ rem: rem, rememberedParent: rememberedParent, isCompleted: isCompleted }];
 		}
 	}
 }
 
-async function acceptOmniRem(todoRems: TodoRems, rem: Rem, rememberedParent?: Rem) {
+async function acceptOmniRem(todoRems: TodoRems, rem: Rem, rememberedParent?: Rem, isCompleted: boolean = false) {
 	if (todoRems['omni']) {
-		todoRems['omni'].push({ rem: rem, rememberedParent: rememberedParent });
+		todoRems['omni'].push({ rem: rem, rememberedParent: rememberedParent, isCompleted: isCompleted });
 	} else {
-		todoRems['omni'] = [{ rem: rem, rememberedParent: rememberedParent }];
+		todoRems['omni'] = [{ rem: rem, rememberedParent: rememberedParent, isCompleted: isCompleted }];
 	}
 	return todoRems;
 }
@@ -51,14 +52,20 @@ async function processRem(
 				return;
 			}
 			if (rememberedParent) {
-				await acceptTodoRem(dailyDocument!, todoRems, rem, rememberedParent);
+				await acceptTodoRem(dailyDocument!, todoRems, rem, rememberedParent, false);
 			} else {
-				await acceptTodoRem(dailyDocument!, todoRems, rem);
+				await acceptTodoRem(dailyDocument!, todoRems, rem, undefined, false);
 			}
 			return;
 		}
 
 		if (rem && (await isFinishedTodo(rem))) {
+			// Include completed todos to preserve them as portals in original daily documents
+			if (rememberedParent) {
+				await acceptTodoRem(dailyDocument!, todoRems, rem, rememberedParent, true);
+			} else {
+				await acceptTodoRem(dailyDocument!, todoRems, rem, undefined, true);
+			}
 			return;
 		}
 
@@ -76,14 +83,20 @@ async function processRem(
 				return;
 			}
 			if (rememberedParent) {
-				await acceptOmniRem(todoRems, rem, rememberedParent);
+				await acceptOmniRem(todoRems, rem, rememberedParent, false);
 			} else {
-				await acceptOmniRem(todoRems, rem);
+				await acceptOmniRem(todoRems, rem, undefined, false);
 			}
 			return;
 		}
 
 		if (rem && (await isFinishedTodo(rem))) {
+			// Include completed todos to preserve them as portals in original locations
+			if (rememberedParent) {
+				await acceptOmniRem(todoRems, rem, rememberedParent, true);
+			} else {
+				await acceptOmniRem(todoRems, rem, undefined, true);
+			}
 			return;
 		}
 
@@ -142,15 +155,47 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 	}
 
 	if (Object.keys(todoRems).length > 0) {
-		await plugin.app.toast("Moving unfinished todos to today's Daily Document.");
+		await plugin.app.toast("Processing todos for rollover and preserving completed ones.");
 		for (const dateString in todoRems) {
 			// dateString can also be 'omni'
+			
+			// Separate completed and unfinished todos
+			const unfinishedTodos = todoRems[dateString].filter(todo => !todo.isCompleted);
+			const completedTodos = todoRems[dateString].filter(todo => todo.isCompleted);
+			
+			// Handle completed todos - preserve them as portals in their original daily documents
+			if (portalMode && completedTodos.length > 0 && dateString !== 'omni') {
+				// Find the original daily document by timestamp
+				let originalDailyDocument = null;
+				for (const doc of dailyDocuments) {
+					const timeStampValue = await doc.getTagPropertyValue(timeStampSlot!._id);
+					if (String(timeStampValue) === dateString) {
+						originalDailyDocument = doc;
+						break;
+					}
+				}
+				
+				if (originalDailyDocument) {
+					for (const completedTodo of completedTodos) {
+						// Ensure completed todo remains as a portal in its original daily document
+						if (completedTodo.rememberedParent) {
+							await completedTodo.rem.addToPortal(originalDailyDocument);
+						}
+					}
+				}
+			}
+			
+			// Handle unfinished todos - roll them over to today's daily document
+			if (unfinishedTodos.length === 0) {
+				continue; // No unfinished todos to roll over
+			}
+			
 			let copiedParent: Rem | undefined = undefined;
 			if (portalMode) {
 				// const groupPortals = await plugin.settings.getSetting('group-portals');
 				if (
-					todoRems[dateString][0].rememberedParent &&
-					parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent!)
+					unfinishedTodos[0].rememberedParent &&
+					parentRemsAlreadyRolledOver.includes(unfinishedTodos[0].rememberedParent!)
 				) {
 					continue;
 				}
@@ -161,7 +206,7 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					continue;
 				}
 				await plugin.rem.moveRems([newPortal], todayDailyDocument, 0);
-				for (const todoRem of todoRems[dateString]) {
+				for (const todoRem of unfinishedTodos) {
 					const rememberedParent = todoRem.rememberedParent;
 
 					if (dateString === 'omni') {
@@ -187,8 +232,8 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					continue;
 				}
 				if (
-					todoRems[dateString][0].rememberedParent &&
-					!parentRemsAlreadyRolledOver.includes(todoRems[dateString][0].rememberedParent!)
+					unfinishedTodos[0].rememberedParent &&
+					!parentRemsAlreadyRolledOver.includes(unfinishedTodos[0].rememberedParent!)
 				) {
 					copiedParent = await plugin.rem.createRem();
 					await copiedParent?.addPowerup('rolled');
@@ -197,15 +242,15 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 					continue;
 				}
 				await copiedParent.setText(
-					todoRems[dateString][0].rememberedParent!.text || ['Untitled Rem']
+					unfinishedTodos[0].rememberedParent!.text || ['Untitled Rem']
 				);
 				await plugin.rem.moveRems([copiedParent], todayDailyDocument, 0);
-				for (const todoRem of todoRems[dateString]) {
+				for (const todoRem of unfinishedTodos) {
 					await plugin.rem.moveRems([todoRem.rem], copiedParent, (copiedParent.children ?? []).length);
 				}
 			}
-			if (todoRems[dateString][0].rememberedParent) {
-				parentRemsAlreadyRolledOver.push(todoRems[dateString][0].rememberedParent!);
+			if (unfinishedTodos[0].rememberedParent) {
+				parentRemsAlreadyRolledOver.push(unfinishedTodos[0].rememberedParent!);
 			}
 		}
 	} else if (Object.keys(todoRems).length === 0) {
