@@ -149,11 +149,33 @@ async function onActivate(plugin: ReactRNPlugin) {
 				keywords: 'debug, auto, rollover',
 				keyboardShortcut: 'ctrl+shift+alt+d',
 				action: async () => {
+					const forcedLastAutoRolloverTime = new Date(
+						new Date().setDate(new Date().getDate() - 1)
+					);
+					console.log(
+						'[RTD:debug-auto-rollover] Setting lastAutoRolloverTime to',
+						forcedLastAutoRolloverTime.toISOString()
+					);
 					await plugin.storage.setSynced(
 						'lastAutoRolloverTime',
-						new Date(new Date().setDate(new Date().getDate() - 1))
+						forcedLastAutoRolloverTime
 					);
-					// await autoRollover(plugin);
+					console.log('[RTD:debug-auto-rollover] Triggering forced auto rollover.');
+					try {
+						await autoRollover(plugin, {
+							force: true,
+							source: 'debug-auto-rollover',
+						});
+						await plugin.app.toast(
+							'Forced auto rollover completed. Check console logs for details.'
+						);
+					} catch (error) {
+						console.error('[RTD:debug-auto-rollover] Forced auto rollover failed.', error);
+						await plugin.app.toast(
+							'Forced auto rollover failed. Check console logs for details.'
+						);
+						throw error;
+					}
 				},
 			});
 
@@ -184,7 +206,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 				icon: '🐛',
 				keywords: 'debug, bump, auto, rollover',
 				action: async () => {
-					await autoRollover(plugin);
+					await autoRollover(plugin, { source: 'debug-bump-auto-rollover' });
 				},
 			});
 
