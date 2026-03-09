@@ -1,4 +1,4 @@
-import { BuiltInPowerupCodes, ReactRNPlugin } from '@remnote/plugin-sdk';
+import { ReactRNPlugin } from '@remnote/plugin-sdk';
 
 export async function cleanupPastDocuments(plugin: ReactRNPlugin) {
 	const rolledPowerup = await plugin.powerup.getPowerupByCode('rolled');
@@ -12,12 +12,11 @@ export async function cleanupPastDocuments(plugin: ReactRNPlugin) {
 	}
 
 	for (const rem of rolledOverRems) {
-		const dailyDocument = await plugin.powerup.getPowerupByCode(
-			BuiltInPowerupCodes.DailyDocument
-		);
-		if (dailyDocument?.children?.includes(rem._id)) {
+		// Non-portal mode creates transient wrapper rems under each daily doc.
+		// Once rollover moves all unfinished children onward, empty wrappers can be deleted.
+		if ((rem.children ?? []).length > 0) {
 			continue;
 		}
-		rem.remove();
+		await rem.remove();
 	}
 }
