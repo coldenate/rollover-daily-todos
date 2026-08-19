@@ -113,12 +113,11 @@ export async function handleUnfinishedTodos(plugin: ReactRNPlugin) {
 		return;
 	}
 
-	const timeStampSlot = await plugin.powerup.getPowerupSlotByCode(
-		BuiltInPowerupCodes.DailyDocument,
-		'Timestamp'
-	);
 	for (const dailyDocument of dailyDocuments) {
-		const timeStampValue = await dailyDocument.getTagPropertyValue(timeStampSlot!._id);
+		const timeStampValue = await dailyDocument.getPowerupProperty(
+			BuiltInPowerupCodes.DailyDocument,
+			'Timestamp'
+		);
 		const createdAt = new Date(Number(timeStampValue) * 1000);
 		const daysAgo: number = howLongAgo(createdAt);
 		if (daysAgo > dateLimit) {
